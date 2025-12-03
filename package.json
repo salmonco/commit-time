@@ -11,7 +11,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx lib/prisma/seed.ts",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.31.3",
@@ -41,6 +43,7 @@
     "eslint-config-next": "16.0.6",
     "prettier": "^3.7.4",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

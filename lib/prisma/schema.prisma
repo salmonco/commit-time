@@ -1,14 +1,337 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/client"
+  output   = "./generated/client"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ============================================
+// 1. 기본 데이터 계층 (GitHub 데이터)
+// ============================================
+
+model User {
+  id             String   @id @default(uuid())
+  githubId       Int      @unique
+  githubUsername String
+  email          String?
+  avatarUrl      String?
+  accessToken    String   @db.Text // 암호화 권장
+
+  // 사용자 학습 데이터
+  learningProfile UserLearningProfile?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  repositories       Repository[]
+  features           Feature[]
+  estimationRequests EstimationRequest[]
+  feedbackEvents     FeedbackEvent[]
+
+  @@index([githubId])
+  @@index([githubUsername])
+}
+
+model Repository {
+  id         String    @id @default(uuid())
+  githubId   Int       @unique
+  name       String
+  fullName   String // owner/repo
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive   Boolean   @default(true)
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  pullRequests PullRequest[]
+  commits      Commit[]
+
+  @@index([userId, isActive])
+  @@index([fullName])
+}
+
+model PullRequest {
+  id           String    @id @default(uuid())
+  githubId     Int       @unique
+  number       Int
+  title        String
+  description  String?   @db.Text
+  state        String // open, closed, merged
+  mergedAt     DateTime?
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  commits   Commit[]
+  feature   Feature?
+  createdAt DateTime @default(now())
+
+  @@index([repositoryId, state])
+  @@index([repositoryId, number])
+}
+
+model Commit {
+  id           String   @id @default(uuid())
+  sha          String   @unique
+  message      String   @db.Text
+  authorDate   DateTime
+  additions    Int      @default(0)
+  deletions    Int      @default(0)
+  filesChanged Int      @default(0)
+
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  pullRequestId String?
+  pullRequest   PullRequest? @relation(fields: [pullRequestId], references: [id], onDelete: SetNull)
+
+  featureId String?
+  feature   Feature? @relation(fields: [featureId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([repositoryId, authorDate])
+  @@index([featureId])
+  @@index([sha])
+}
+
+// ============================================
+// 2. 분석 계층 (기능 단위)
+// ============================================
+
+model Feature {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // PR 연결
+  pullRequestId String?       @unique
+  pullRequest   PullRequest? @relation(fields: [pullRequestId], references: [id], onDelete: SetNull)
+
+  // 기능 정보
+  title       String
+  description String? @db.Text
+  category    String // "backend-api", "frontend-ui", "database", "devops", etc.
+  subcategory String? // 더 세분화된 분류
+
+  // 작업 시간
+  startTime   DateTime
+  endTime     DateTime
+  activeHours Float // 실제 코딩 시간 (idle 제외)
+  totalHours  Float // 전체 소요 시간
+
+  // AI 분석
+  embedding  String?  @db.Text // JSON array of floats
+  complexity String? // "simple", "medium", "complex"
+  tags       String[] // 검색용 태그
+
+  // 메타데이터
+  linesAdded   Int @default(0)
+  linesDeleted Int @default(0)
+  filesChanged Int @default(0)
+
+  commits Commit[]
+
+  // 버전 관리
+  version Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  estimationRequest EstimationRequest?
+
+  @@index([userId, category])
+  @@index([category, complexity])
+  @@index([userId, createdAt])
+}
+
+// ============================================
+// 3. 예측 시스템 계층 (확장 가능)
+// ============================================
+
+// 예측 모델 정의 (여러 알고리즘 지원)
+model PredictionModel {
+  id          String  @id @default(uuid())
+  name        String  @unique // "rule-based-v1", "embedding-similarity-v1", "ml-model-v1"
+  version     String // "1.0.0"
+  type        String // "rule-based", "similarity", "regression", "neural-network"
+  description String? @db.Text
+
+  // 모델 설정 (JSON)
+  config Json // { idleGapMinutes: 30, similarityThreshold: 0.8, ... }
+
+  // 상태
+  isActive  Boolean @default(false)
+  isDefault Boolean @default(false)
+
+  // 성능 추적
+  performance ModelPerformance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  estimationResults EstimationResult[]
+
+  @@index([isActive, isDefault])
+  @@index([name])
+}
+
+// 모델 성능 메트릭 (시간별 추적)
+model ModelPerformance {
+  id      String          @id @default(uuid())
+  modelId String
+  model   PredictionModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  // 성능 지표
+  meanAbsoluteError Float // MAE
+  meanSquaredError  Float? // MSE
+  r2Score           Float? // R²
+
+  // 측정 기간
+  periodStart DateTime
+  periodEnd   DateTime
+  sampleCount Int // 평가에 사용된 샘플 수
+
+  createdAt DateTime @default(now())
+
+  @@index([modelId, periodStart])
+}
+
+// 예측 요청 (입력)
+model EstimationRequest {
+  id          String  @id @default(uuid())
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 요청 정보
+  title       String
+  description String?  @db.Text
+  category    String? // 사용자가 선택한 카테고리
+  tags        String[] // 사용자가 입력한 태그
+
+  // 컨텍스트 (예측에 영향을 줄 수 있는 정보)
+  context Json? // { repository: "...", teamSize: 3, priority: "high" }
+
+  // 예측 결과들 (여러 모델의 결과)
+  results EstimationResult[]
+
+  // 실제 완료 정보 (피드백)
+  actualFeatureId String?  @unique
+  actualFeature   Feature? @relation(fields: [actualFeatureId], references: [id], onDelete: SetNull)
+  actualHours     Float?
+  completedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([category])
+}
+
+// 예측 결과 (출력)
+model EstimationResult {
+  id        String            @id @default(uuid())
+  requestId String
+  request   EstimationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  modelId String
+  model   PredictionModel @relation(fields: [modelId], references: [id], onDelete: Restrict)
+
+  // 예측값
+  predictedHours  Float
+  confidenceScore Float @default(0.5) // 0-1
+
+  // 근거 (설명 가능한 AI)
+  reasoning Json // { similarFeatures: [...], weights: {...}, factors: {...} }
+
+  // 사용된 유사 기능들
+  similarFeatureIds String[] // Feature IDs
+
+  createdAt DateTime @default(now())
+
+  @@unique([requestId, modelId]) // 하나의 요청에 모델당 하나의 결과
+  @@index([requestId])
+  @@index([modelId])
+}
+
+// ============================================
+// 4. 피드백 루프 시스템 (핵심!)
+// ============================================
+
+// 피드백 이벤트 (모든 사용자 피드백 기록)
+model FeedbackEvent {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 피드백 대상
+  estimationRequestId String
+
+  // 피드백 타입
+  type String // "completion", "adjustment", "correction", "rating"
+
+  // 피드백 데이터
+  data Json // { actualHours: 5.5, rating: 4, comment: "..." }
+
+  // 피드백 시점의 예측 정보 (스냅샷)
+  predictionSnapshot Json // 예측 당시의 데이터 보존
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, type, createdAt])
+  @@index([estimationRequestId])
+}
+
+// 사용자별 학습 프로필 (개인화)
+model UserLearningProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 사용자 특성 가중치 (학습됨)
+  weights Json // { experience: 1.2, categoryMultipliers: {...}, ... }
+
+  // 카테고리별 평균 속도
+  categoryStats Json // { "backend-api": { avgHours: 5.2, count: 10 }, ... }
+
+  // 정확도 히스토리
+  accuracyHistory Json // [{ date: "...", mae: 0.3 }, ...]
+
+  // 학습 데이터 개수
+  totalFeedbacks Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================
+// 5. 실험 및 A/B 테스트
+// ============================================
+
+model Experiment {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String? @db.Text
+
+  // 실험 설정
+  type   String // "model-comparison", "feature-test"
+  config Json // 실험 파라미터
+
+  // 상태
+  status    String    @default("draft") // "draft", "running", "completed", "archived"
+  startDate DateTime?
+  endDate   DateTime?
+
+  // 결과
+  results Json? // 실험 결과 데이터
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startDate])
 }
