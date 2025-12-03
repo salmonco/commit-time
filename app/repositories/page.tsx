@@ -1,35 +1,31 @@
 'use client';
 
 import { ROUTES } from '@/lib/constants/routes';
-import type { Repository } from '@/types/repository';
-import { useRouter } from 'next/navigation';
+import { RepositoriesResponse } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 export default function RepositoriesPage() {
   const router = useRouter();
 
   // React Query로 Repository 목록 가져오기
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['repositories'],
-    queryFn: async () => {
-      const response = await fetch(ROUTES.API.GITHUB.REPOS);
+  const { data, isLoading, isFetching, error, refetch } =
+    useQuery<RepositoriesResponse>({
+      queryKey: ['repositories'],
+      queryFn: async () => {
+        try {
+          const { data } = await axios.get<RepositoriesResponse>(
+            ROUTES.API.GITHUB.REPOS,
+          );
+          return data;
+        } catch {
+          throw new Error('Repository 목록을 가져올 수 없습니다');
+        }
+      },
+    });
 
-      if (!response.ok) {
-        throw new Error('Repository 목록을 가져올 수 없습니다');
-      }
-
-      const result = await response.json();
-      return result.data as Repository[];
-    },
-  });
-
-  const repositories = data || [];
+  const repositories = data?.data || [];
 
   // 데이터 없이 로딩 중인 경우만 true (캐시 있으면 false)
   const isInitialLoading = isLoading && !data;

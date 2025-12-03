@@ -4,6 +4,7 @@ import { ROUTES } from '@/lib/constants/routes';
 import type { CommitsResponse } from '@/types/api';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 
 export default function RepositoryDetailPage() {
   const router = useRouter();
@@ -14,25 +15,19 @@ export default function RepositoryDetailPage() {
   const fullName = `${owner}/${repo}`;
 
   // React Query로 Commit 목록 가져오기 (자동 동기화 포함)
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery<CommitsResponse>({
-    queryKey: ['commits', owner, repo],
-    queryFn: async () => {
-      const url = `${ROUTES.API.GITHUB.COMMITS(owner, repo)}?per_page=50`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error('Commit 목록을 가져올 수 없습니다');
-      }
-
-      return response.json();
-    },
-  });
+  const { data, isLoading, isFetching, error, refetch } =
+    useQuery<CommitsResponse>({
+      queryKey: ['commits', owner, repo],
+      queryFn: async () => {
+        try {
+          const url = `${ROUTES.API.GITHUB.COMMITS(owner, repo)}?per_page=50`;
+          const { data } = await axios.get<CommitsResponse>(url);
+          return data;
+        } catch {
+          throw new Error('Commit 목록을 가져올 수 없습니다');
+        }
+      },
+    });
 
   const commits = data?.data || [];
   const repository = data?.repository;
