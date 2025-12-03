@@ -3,7 +3,7 @@
 import { ROUTES } from '@/lib/constants/routes';
 import { RepositoriesResponse } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import axios from '@/lib/http/client';
 import { useRouter } from 'next/navigation';
 
 export default function RepositoriesPage() {

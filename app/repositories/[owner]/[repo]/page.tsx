@@ -4,7 +4,7 @@ import { ROUTES } from '@/lib/constants/routes';
 import type { CommitsResponse } from '@/types/api';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import axios from '@/lib/http/client';
 
 export default function RepositoryDetailPage() {
   const router = useRouter();
