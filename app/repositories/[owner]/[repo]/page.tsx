@@ -236,6 +236,45 @@ export default function RepositoryDetailPage() {
             최근 커밋들을 기능 단위로 그룹화하고 각 기능에 소요된 시간을
             분석합니다.
           </p>
+
+          {/* 알고리즘 설명 */}
+          <details className="mt-3 text-sm">
+            <summary className="cursor-pointer font-medium text-blue-600 hover:text-blue-800">
+              📖 이 분석은 어떻게 작동하나요?
+            </summary>
+            <div className="mt-3 space-y-2 rounded-lg bg-blue-50 p-4 text-gray-700">
+              <p className="font-medium text-blue-900">분석 과정:</p>
+              <ol className="ml-4 list-decimal space-y-2">
+                <li>
+                  <strong>커밋 그룹화 (OpenAI):</strong> 커밋 메시지를 분석하여
+                  유사한 작업을 기능 단위로 자동 그룹화합니다.
+                </li>
+                <li>
+                  <strong>실제 작업 시간 계산 (세션 기반):</strong>
+                  <ul className="ml-4 mt-1 list-disc space-y-1">
+                    <li>커밋 간 간격이 3시간 이내면 같은 작업 세션으로 간주</li>
+                    <li>
+                      3시간 이상 간격이 벌어지면 다른 세션 (휴식/다른 작업)
+                    </li>
+                    <li>
+                      마지막 커밋 후 정리 시간 30분 자동 추가 (테스트, 리뷰 등)
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>총 경과 시간:</strong> 첫 커밋부터 마지막 커밋까지의
+                  실제 경과 시간 (휴식 포함)
+                </li>
+              </ol>
+              <p className="mt-3 text-xs text-gray-600">
+                💡 <strong>왜 이렇게 계산하나요?</strong> 커밋 사이의 긴 간격은
+                수면, 식사, 다른 작업 등으로 실제 작업 시간이 아닐 가능성이
+                높습니다. 세션 기반 계산은 순수 작업 시간에 더 가깝게
+                추정합니다.
+              </p>
+            </div>
+          </details>
+
           <button
             onClick={handleAnalyze}
             disabled={analysisLoading || analysisFetching}
