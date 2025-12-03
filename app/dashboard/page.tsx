@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { ROUTES } from '@/lib/constants/routes';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export default async function DashboardPage() {
   // 서버에서 인증 확인
@@ -71,7 +72,7 @@ export default async function DashboardPage() {
 
         {/* 빠른 액션 */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <a
+          <Link
             href={ROUTES.REPOSITORIES}
             className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-blue-500 hover:bg-blue-50"
           >
@@ -82,7 +83,7 @@ export default async function DashboardPage() {
             <p className="mt-1 text-sm text-gray-600">
               Repository 목록 확인하기
             </p>
-          </a>
+          </Link>
 
           <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center opacity-50">
             <div className="text-3xl">📊</div>

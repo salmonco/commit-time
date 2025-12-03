@@ -1,9 +1,8 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
 import { ROUTES } from '@/lib/constants/routes';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 // Repository 타입 정의
 type Repository = {
@@ -21,20 +20,17 @@ type Repository = {
 
 export default function RepositoriesPage() {
   const router = useRouter();
-  const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadRepositories();
-  }, []);
-
-  const loadRepositories = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // API 호출
+  // React Query로 Repository 목록 가져오기
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['repositories'],
+    queryFn: async () => {
       const response = await fetch(ROUTES.API.GITHUB.REPOS);
 
       if (!response.ok) {
@@ -42,16 +38,14 @@ export default function RepositoriesPage() {
       }
 
       const result = await response.json();
-      setRepositories(result.data);
-    } catch (err) {
-      console.error('Repository 로딩 에러:', err);
-      setError(
-        err instanceof Error ? err.message : 'Repository를 불러오지 못했습니다',
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+      return result.data as Repository[];
+    },
+  });
+
+  const repositories = data || [];
+
+  // 데이터 없이 로딩 중인 경우만 true (캐시 있으면 false)
+  const isInitialLoading = isLoading && !data;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,21 +64,29 @@ export default function RepositoriesPage() {
                 내 Repositories
               </h1>
             </div>
-            <button
-              onClick={loadRepositories}
-              disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? '새로고침 중...' : '새로고침'}
-            </button>
+            <div className="flex items-center gap-2">
+              {isFetching && !isInitialLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                  <span>업데이트 중...</span>
+                </div>
+              )}
+              <button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isFetching ? '새로고침 중...' : '새로고침'}
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* 메인 컨텐츠 */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* 로딩 상태 */}
-        {loading && (
+        {/* 초기 로딩 상태 (캐시 없을 때만) */}
+        {isInitialLoading && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
@@ -96,11 +98,15 @@ export default function RepositoriesPage() {
         )}
 
         {/* 에러 상태 */}
-        {error && !loading && (
+        {error && !isInitialLoading && (
           <div className="rounded-lg bg-red-50 p-4 text-center">
-            <p className="text-red-800">{error}</p>
+            <p className="text-red-800">
+              {error instanceof Error
+                ? error.message
+                : 'Repository를 불러오지 못했습니다'}
+            </p>
             <button
-              onClick={loadRepositories}
+              onClick={() => refetch()}
               className="mt-2 text-sm text-red-600 hover:text-red-800"
             >
               다시 시도
@@ -109,13 +115,13 @@ export default function RepositoriesPage() {
         )}
 
         {/* Repository 목록 */}
-        {!loading && !error && repositories.length === 0 && (
+        {!isInitialLoading && !error && repositories.length === 0 && (
           <div className="rounded-lg bg-white p-12 text-center shadow">
             <p className="text-gray-600">Repository가 없습니다.</p>
           </div>
         )}
 
-        {!loading && !error && repositories.length > 0 && (
+        {!isInitialLoading && !error && repositories.length > 0 && (
           <div className="space-y-4">
             {/* 통계 */}
             <div className="rounded-lg bg-white p-4 shadow">
@@ -177,7 +183,13 @@ export default function RepositoriesPage() {
 
                   {/* 액션 버튼 */}
                   <div className="mt-4 flex gap-2">
-                    <button className="flex-1 rounded bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200">
+                    <button
+                      onClick={() => {
+                        const [owner, repoName] = repo.fullName.split('/');
+                        router.push(`/repositories/${owner}/${repoName}`);
+                      }}
+                      className="flex-1 rounded bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                    >
                       분석 시작
                     </button>
                   </div>
