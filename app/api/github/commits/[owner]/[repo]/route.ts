@@ -22,10 +22,11 @@ export async function GET(
     // 1. 인증된 사용자 확인
     const supabase = await createSupabaseClient();
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (userError || !user) {
       return NextResponse.json(
         { error: '로그인이 필요합니다' },
         { status: 401 },
@@ -33,17 +34,21 @@ export async function GET(
     }
 
     // 2. GitHub access token 가져오기
-    const accessToken = session.provider_token;
-    if (!accessToken) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session || !session.provider_token) {
       return NextResponse.json(
         { error: 'GitHub 토큰이 없습니다' },
         { status: 401 },
       );
     }
+    const accessToken = session.provider_token;
 
     // 3. User 정보 가져오기 또는 생성
-    const githubUserId = session.user.user_metadata?.provider_id;
-    const githubUsername = session.user.user_metadata?.user_name;
+    const githubUserId = user.user_metadata?.provider_id;
+    const githubUsername = user.user_metadata?.user_name;
 
     if (!githubUserId) {
       return NextResponse.json(
@@ -61,8 +66,8 @@ export async function GET(
         data: {
           githubId: parseInt(githubUserId),
           githubUsername: githubUsername || 'unknown',
-          email: session.user.email,
-          avatarUrl: session.user.user_metadata?.avatar_url,
+          email: user.email,
+          avatarUrl: user.user_metadata?.avatar_url,
           accessToken: accessToken,
         },
       });
