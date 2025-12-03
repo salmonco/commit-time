@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ROUTES } from '@/lib/constants/routes';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import PredictionForm from '@/components/PredictionForm';
 
 export default async function DashboardPage() {
   // 서버에서 인증 확인
@@ -70,8 +71,13 @@ export default async function DashboardPage() {
           </p>
         </div>
 
+        {/* 시간 예측 폼 */}
+        <div className="mb-8">
+          <PredictionForm />
+        </div>
+
         {/* 빠른 액션 */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           <Link
             href={ROUTES.REPOSITORIES}
             className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-blue-500 hover:bg-blue-50"
@@ -81,19 +87,13 @@ export default async function DashboardPage() {
               내 Repositories
             </h3>
             <p className="mt-1 text-sm text-gray-600">
-              Repository 목록 확인하기
+              Repository 목록 및 커밋 분석 확인하기
             </p>
           </Link>
 
           <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center opacity-50">
             <div className="text-3xl">📊</div>
-            <h3 className="mt-2 font-semibold text-gray-900">작업 분석</h3>
-            <p className="mt-1 text-sm text-gray-600">곧 추가될 예정</p>
-          </div>
-
-          <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 text-center opacity-50">
-            <div className="text-3xl">⏱️</div>
-            <h3 className="mt-2 font-semibold text-gray-900">시간 예측</h3>
+            <h3 className="mt-2 font-semibold text-gray-900">통계 대시보드</h3>
             <p className="mt-1 text-sm text-gray-600">곧 추가될 예정</p>
           </div>
         </div>
