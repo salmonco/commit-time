@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.31.3",
+    "@octokit/rest": "^22.0.1",
     "@prisma/adapter-pg": "^7.0.1",
     "@prisma/client": "^7.0.1",
     "@sentry/nextjs": "^10.28.0",
