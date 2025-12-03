@@ -1,47 +1,9 @@
 'use client';
 
 import { ROUTES } from '@/lib/constants/routes';
+import type { CommitsResponse } from '@/types/api';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-
-// Commit 타입 정의
-type Commit = {
-  sha: string;
-  message: string;
-  author: {
-    date?: string;
-  };
-  stats?: {
-    additions: number;
-    deletions: number;
-  };
-  filesChanged?: number;
-};
-
-// Repository 타입
-type RepositoryInfo = {
-  id: number;
-  name: string;
-  fullName: string;
-  lastSyncAt: string | null;
-};
-
-// Sync 정보 타입
-type SyncInfo = {
-  synced: boolean;
-  total: number;
-  saved: number;
-  skipped: number;
-};
-
-// API 응답 타입
-type CommitsResponse = {
-  success: boolean;
-  data: Commit[];
-  count: number;
-  repository: RepositoryInfo;
-  sync?: SyncInfo;
-};
 
 export default function RepositoryDetailPage() {
   const router = useRouter();
@@ -61,9 +23,8 @@ export default function RepositoryDetailPage() {
   } = useQuery<CommitsResponse>({
     queryKey: ['commits', owner, repo],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/github/commits/${owner}/${repo}?per_page=50`,
-      );
+      const url = `${ROUTES.API.GITHUB.COMMITS(owner, repo)}?per_page=50`;
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error('Commit 목록을 가져올 수 없습니다');
@@ -78,7 +39,7 @@ export default function RepositoryDetailPage() {
   const syncInfo = data?.sync;
 
   // 데이터 없이 로딩 중인 경우만 true (캐시 있으면 false)
-  const isInitialLoading = isLoading && commits.length === 0;
+  const isInitialLoading = isLoading && !data;
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,22 +1,9 @@
 'use client';
 
 import { ROUTES } from '@/lib/constants/routes';
+import type { Repository } from '@/types/repository';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-
-// Repository 타입 정의
-type Repository = {
-  id: number;
-  name: string;
-  fullName: string;
-  description: string | null;
-  private: boolean;
-  language: string | null;
-  stargazersCount: number;
-  forksCount: number;
-  updatedAt: string;
-  htmlUrl: string;
-};
 
 export default function RepositoriesPage() {
   const router = useRouter();
@@ -186,7 +173,7 @@ export default function RepositoriesPage() {
                     <button
                       onClick={() => {
                         const [owner, repoName] = repo.fullName.split('/');
-                        router.push(`/repositories/${owner}/${repoName}`);
+                        router.push(ROUTES.REPOSITORY_DETAIL(owner, repoName));
                       }}
                       className="flex-1 rounded bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
                     >

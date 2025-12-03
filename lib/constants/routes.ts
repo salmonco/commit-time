@@ -22,7 +22,8 @@ export const ROUTES = {
   API: {
     GITHUB: {
       REPOS: '/api/github/repos',
-      COMMITS: '/api/github/commits',
+      COMMITS: (owner: string, repo: string) =>
+        `/api/github/commits/${owner}/${repo}`,
       SYNC: '/api/github/sync',
     },
     ESTIMATION: {
@@ -33,6 +34,10 @@ export const ROUTES = {
       SUBMIT: '/api/feedback/submit',
     },
   },
+
+  // 페이지 경로 (동적 매개변수)
+  REPOSITORY_DETAIL: (owner: string, repo: string) =>
+    `/repositories/${owner}/${repo}`,
 } as const;
 
 // 로그인이 필요한 경로들
